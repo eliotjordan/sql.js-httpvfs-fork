@@ -1,2 +1,611 @@
-!function(e,t){if("object"==typeof exports&&"object"==typeof module)module.exports=t();else if("function"==typeof define&&define.amd)define([],t);else{var r=t();for(var n in r)("object"==typeof exports?exports:e)[n]=r[n]}}(this,(function(){return(()=>{"use strict";var e={870:(e,t,r)=>{r.r(t),r.d(t,{createEndpoint:()=>o,expose:()=>l,proxy:()=>v,proxyMarker:()=>n,releaseProxy:()=>a,transfer:()=>h,transferHandlers:()=>c,windowEndpoint:()=>g,wrap:()=>f});const n=Symbol("Comlink.proxy"),o=Symbol("Comlink.endpoint"),a=Symbol("Comlink.releaseProxy"),s=Symbol("Comlink.thrown"),i=e=>"object"==typeof e&&null!==e||"function"==typeof e,c=new Map([["proxy",{canHandle:e=>i(e)&&e[n],serialize(e){const{port1:t,port2:r}=new MessageChannel;return l(e,t),[r,[r]]},deserialize:e=>(e.start(),f(e))}],["throw",{canHandle:e=>i(e)&&s in e,serialize({value:e}){let t;return t=e instanceof Error?{isError:!0,value:{message:e.message,name:e.name,stack:e.stack}}:{isError:!1,value:e},[t,[]]},deserialize(e){if(e.isError)throw Object.assign(new Error(e.value.message),e.value);throw e.value}}]]);function l(e,t=self){t.addEventListener("message",(function r(n){if(!n||!n.data)return;const{id:o,type:a,path:i}=Object.assign({path:[]},n.data),c=(n.data.argumentList||[]).map(w);let f;try{const t=i.slice(0,-1).reduce(((e,t)=>e[t]),e),r=i.reduce(((e,t)=>e[t]),e);switch(a){case 0:f=r;break;case 1:t[i.slice(-1)[0]]=w(n.data.value),f=!0;break;case 2:f=r.apply(t,c);break;case 3:f=v(new r(...c));break;case 4:{const{port1:t,port2:r}=new MessageChannel;l(e,r),f=h(t,[t])}break;case 5:f=void 0}}catch(e){f={value:e,[s]:0}}Promise.resolve(f).catch((e=>({value:e,[s]:0}))).then((e=>{const[n,s]=b(e);t.postMessage(Object.assign(Object.assign({},n),{id:o}),s),5===a&&(t.removeEventListener("message",r),u(t))}))})),t.start&&t.start()}function u(e){(function(e){return"MessagePort"===e.constructor.name})(e)&&e.close()}function f(e,t){return d(e,[],t)}function p(e){if(e)throw new Error("Proxy has been released and is not useable")}function d(e,t=[],r=function(){}){let n=!1;const s=new Proxy(r,{get(r,o){if(p(n),o===a)return()=>E(e,{type:5,path:t.map((e=>e.toString()))}).then((()=>{u(e),n=!0}));if("then"===o){if(0===t.length)return{then:()=>s};const r=E(e,{type:0,path:t.map((e=>e.toString()))}).then(w);return r.then.bind(r)}return d(e,[...t,o])},set(r,o,a){p(n);const[s,i]=b(a);return E(e,{type:1,path:[...t,o].map((e=>e.toString())),value:s},i).then(w)},apply(r,a,s){p(n);const i=t[t.length-1];if(i===o)return E(e,{type:4}).then(w);if("bind"===i)return d(e,t.slice(0,-1));const[c,l]=m(s);return E(e,{type:2,path:t.map((e=>e.toString())),argumentList:c},l).then(w)},construct(r,o){p(n);const[a,s]=m(o);return E(e,{type:3,path:t.map((e=>e.toString())),argumentList:a},s).then(w)}});return s}function m(e){const t=e.map(b);return[t.map((e=>e[0])),(r=t.map((e=>e[1])),Array.prototype.concat.apply([],r))];var r}const y=new WeakMap;function h(e,t){return y.set(e,t),e}function v(e){return Object.assign(e,{[n]:!0})}function g(e,t=self,r="*"){return{postMessage:(t,n)=>e.postMessage(t,r,n),addEventListener:t.addEventListener.bind(t),removeEventListener:t.removeEventListener.bind(t)}}function b(e){for(const[t,r]of c)if(r.canHandle(e)){const[n,o]=r.serialize(e);return[{type:3,name:t,value:n},o]}return[{type:0,value:e},y.get(e)||[]]}function w(e){switch(e.type){case 3:return c.get(e.name).deserialize(e.value);case 0:return e.value}}function E(e,t,r){return new Promise((n=>{const o=new Array(4).fill(0).map((()=>Math.floor(Math.random()*Number.MAX_SAFE_INTEGER).toString(16))).join("-");e.addEventListener("message",(function t(r){r.data&&r.data.id&&r.data.id===o&&(e.removeEventListener("message",t),n(r.data))})),e.start&&e.start(),e.postMessage(Object.assign({id:o},t),r)}))}},162:function(e,t,r){var n=this&&this.__createBinding||(Object.create?function(e,t,r,n){void 0===n&&(n=r),Object.defineProperty(e,n,{enumerable:!0,get:function(){return t[r]}})}:function(e,t,r,n){void 0===n&&(n=r),e[n]=t[r]}),o=this&&this.__setModuleDefault||(Object.create?function(e,t){Object.defineProperty(e,"default",{enumerable:!0,value:t})}:function(e,t){e.default=t}),a=this&&this.__importStar||function(e){if(e&&e.__esModule)return e;var t={};if(null!=e)for(var r in e)"default"!==r&&Object.prototype.hasOwnProperty.call(e,r)&&n(t,e,r);return o(t,e),t};Object.defineProperty(t,"__esModule",{value:!0}),t.createDbWorker=void 0;const s=a(r(870));async function i(e){if(e.data&&"eval"===e.data.action){const t=new Int32Array(e.data.notify,0,2),r=new Uint8Array(e.data.notify,8);let n;try{n={ok:await u(e.data.request)}}catch(t){console.error("worker request error",e.data.request,t),n={err:String(t)}}const o=(new TextEncoder).encode(JSON.stringify(n));r.set(o,0),t[1]=o.length,Atomics.notify(t,0)}}function c(e){if("BODY"===e.tagName)return"body";const t=[];for(;e.parentElement&&"BODY"!==e.tagName;){if(e.id){t.unshift("#"+e.id);break}{let r=1,n=e;for(;n.previousElementSibling;)n=n.previousElementSibling,r++;t.unshift(e.tagName.toLowerCase()+":nth-child("+r+")")}e=e.parentElement}return t.join(" > ")}function l(e){return Object.keys(e)}async function u(e){if(console.log("dom vtable request",e),"select"===e.type)return[...document.querySelectorAll(e.selector)].map((t=>{const r={};for(const n of e.columns)"selector"===n?r.selector=c(t):"parent"===n?t.parentElement&&(r.parent=t.parentElement?c(t.parentElement):null):"idx"===n||(r[n]=t[n]);return r}));if("insert"===e.type){if(!e.value.parent)throw Error('"parent" column must be set when inserting');const t=document.querySelectorAll(e.value.parent);if(0===t.length)throw Error(`Parent element ${e.value.parent} could not be found`);if(t.length>1)throw Error(`Parent element ${e.value.parent} ambiguous (${t.length} results)`);const r=t[0];if(!e.value.tagName)throw Error("tagName must be set for inserting");const n=document.createElement(e.value.tagName);for(const t of l(e.value))if(null!==e.value[t]){if("tagName"===t||"parent"===t)continue;if("idx"===t||"selector"===t)throw Error(`${t} can't be set`);n[t]=e.value[t]}return r.appendChild(n),null}if("update"===e.type){const t=document.querySelector(e.value.selector);if(!t)throw Error(`Element ${e.value.selector} not found!`);const r=[];for(const n of l(e.value)){const o=e.value[n];if("parent"!==n){if("idx"!==n&&"selector"!==n&&o!==t[n]){if(console.log("SETTING ",n,t[n],"->",o),"tagName"===n)throw Error("can't change tagName");r.push(n)}}else if(o!==c(t.parentElement)){const e=document.querySelectorAll(o);if(1!==e.length)throw Error(`Invalid target parent: found ${e.length} matches`);e[0].appendChild(t)}}for(const n of r)t[n]=e.value[n];return null}throw Error(`unknown request ${e.type}`)}s.transferHandlers.set("WORKERSQLPROXIES",{canHandle:e=>!1,serialize(e){throw Error("no")},deserialize:e=>(e.start(),s.wrap(e))}),t.createDbWorker=async function(e,t,r,n=1/0){const o=new Worker(t),a=s.wrap(o),c=await a.SplitFileHttpDatabase(r,e,void 0,n);return o.addEventListener("message",i),{db:c,worker:a,configs:e,release:()=>{c[s.releaseProxy](),a[s.releaseProxy](),o.terminate()}}}},432:function(e,t,r){var n=this&&this.__createBinding||(Object.create?function(e,t,r,n){void 0===n&&(n=r),Object.defineProperty(e,n,{enumerable:!0,get:function(){return t[r]}})}:function(e,t,r,n){void 0===n&&(n=r),e[n]=t[r]}),o=this&&this.__exportStar||function(e,t){for(var r in e)"default"===r||Object.prototype.hasOwnProperty.call(t,r)||n(t,e,r)};Object.defineProperty(t,"__esModule",{value:!0}),o(r(162),t)}},t={};function r(n){var o=t[n];if(void 0!==o)return o.exports;var a=t[n]={exports:{}};return e[n].call(a.exports,a,a.exports,r),a.exports}return r.d=(e,t)=>{for(var n in t)r.o(t,n)&&!r.o(e,n)&&Object.defineProperty(e,n,{enumerable:!0,get:t[n]})},r.o=(e,t)=>Object.prototype.hasOwnProperty.call(e,t),r.r=e=>{"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})},r(432)})()}));
+(function webpackUniversalModuleDefinition(root, factory) {
+	if(typeof exports === 'object' && typeof module === 'object')
+		module.exports = factory();
+	else if(typeof define === 'function' && define.amd)
+		define([], factory);
+	else {
+		var a = factory();
+		for(var i in a) (typeof exports === 'object' ? exports : root)[i] = a[i];
+	}
+})(this, function() {
+return /******/ (() => { // webpackBootstrap
+/******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ({
+
+/***/ 870:
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "createEndpoint": () => (/* binding */ createEndpoint),
+/* harmony export */   "expose": () => (/* binding */ expose),
+/* harmony export */   "proxy": () => (/* binding */ proxy),
+/* harmony export */   "proxyMarker": () => (/* binding */ proxyMarker),
+/* harmony export */   "releaseProxy": () => (/* binding */ releaseProxy),
+/* harmony export */   "transfer": () => (/* binding */ transfer),
+/* harmony export */   "transferHandlers": () => (/* binding */ transferHandlers),
+/* harmony export */   "windowEndpoint": () => (/* binding */ windowEndpoint),
+/* harmony export */   "wrap": () => (/* binding */ wrap)
+/* harmony export */ });
+/**
+ * Copyright 2019 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+const proxyMarker = Symbol("Comlink.proxy");
+const createEndpoint = Symbol("Comlink.endpoint");
+const releaseProxy = Symbol("Comlink.releaseProxy");
+const throwMarker = Symbol("Comlink.thrown");
+const isObject = (val) => (typeof val === "object" && val !== null) || typeof val === "function";
+/**
+ * Internal transfer handle to handle objects marked to proxy.
+ */
+const proxyTransferHandler = {
+    canHandle: (val) => isObject(val) && val[proxyMarker],
+    serialize(obj) {
+        const { port1, port2 } = new MessageChannel();
+        expose(obj, port1);
+        return [port2, [port2]];
+    },
+    deserialize(port) {
+        port.start();
+        return wrap(port);
+    },
+};
+/**
+ * Internal transfer handler to handle thrown exceptions.
+ */
+const throwTransferHandler = {
+    canHandle: (value) => isObject(value) && throwMarker in value,
+    serialize({ value }) {
+        let serialized;
+        if (value instanceof Error) {
+            serialized = {
+                isError: true,
+                value: {
+                    message: value.message,
+                    name: value.name,
+                    stack: value.stack,
+                },
+            };
+        }
+        else {
+            serialized = { isError: false, value };
+        }
+        return [serialized, []];
+    },
+    deserialize(serialized) {
+        if (serialized.isError) {
+            throw Object.assign(new Error(serialized.value.message), serialized.value);
+        }
+        throw serialized.value;
+    },
+};
+/**
+ * Allows customizing the serialization of certain values.
+ */
+const transferHandlers = new Map([
+    ["proxy", proxyTransferHandler],
+    ["throw", throwTransferHandler],
+]);
+function expose(obj, ep = self) {
+    ep.addEventListener("message", function callback(ev) {
+        if (!ev || !ev.data) {
+            return;
+        }
+        const { id, type, path } = Object.assign({ path: [] }, ev.data);
+        const argumentList = (ev.data.argumentList || []).map(fromWireValue);
+        let returnValue;
+        try {
+            const parent = path.slice(0, -1).reduce((obj, prop) => obj[prop], obj);
+            const rawValue = path.reduce((obj, prop) => obj[prop], obj);
+            switch (type) {
+                case 0 /* GET */:
+                    {
+                        returnValue = rawValue;
+                    }
+                    break;
+                case 1 /* SET */:
+                    {
+                        parent[path.slice(-1)[0]] = fromWireValue(ev.data.value);
+                        returnValue = true;
+                    }
+                    break;
+                case 2 /* APPLY */:
+                    {
+                        returnValue = rawValue.apply(parent, argumentList);
+                    }
+                    break;
+                case 3 /* CONSTRUCT */:
+                    {
+                        const value = new rawValue(...argumentList);
+                        returnValue = proxy(value);
+                    }
+                    break;
+                case 4 /* ENDPOINT */:
+                    {
+                        const { port1, port2 } = new MessageChannel();
+                        expose(obj, port2);
+                        returnValue = transfer(port1, [port1]);
+                    }
+                    break;
+                case 5 /* RELEASE */:
+                    {
+                        returnValue = undefined;
+                    }
+                    break;
+            }
+        }
+        catch (value) {
+            returnValue = { value, [throwMarker]: 0 };
+        }
+        Promise.resolve(returnValue)
+            .catch((value) => {
+            return { value, [throwMarker]: 0 };
+        })
+            .then((returnValue) => {
+            const [wireValue, transferables] = toWireValue(returnValue);
+            ep.postMessage(Object.assign(Object.assign({}, wireValue), { id }), transferables);
+            if (type === 5 /* RELEASE */) {
+                // detach and deactive after sending release response above.
+                ep.removeEventListener("message", callback);
+                closeEndPoint(ep);
+            }
+        });
+    });
+    if (ep.start) {
+        ep.start();
+    }
+}
+function isMessagePort(endpoint) {
+    return endpoint.constructor.name === "MessagePort";
+}
+function closeEndPoint(endpoint) {
+    if (isMessagePort(endpoint))
+        endpoint.close();
+}
+function wrap(ep, target) {
+    return createProxy(ep, [], target);
+}
+function throwIfProxyReleased(isReleased) {
+    if (isReleased) {
+        throw new Error("Proxy has been released and is not useable");
+    }
+}
+function createProxy(ep, path = [], target = function () { }) {
+    let isProxyReleased = false;
+    const proxy = new Proxy(target, {
+        get(_target, prop) {
+            throwIfProxyReleased(isProxyReleased);
+            if (prop === releaseProxy) {
+                return () => {
+                    return requestResponseMessage(ep, {
+                        type: 5 /* RELEASE */,
+                        path: path.map((p) => p.toString()),
+                    }).then(() => {
+                        closeEndPoint(ep);
+                        isProxyReleased = true;
+                    });
+                };
+            }
+            if (prop === "then") {
+                if (path.length === 0) {
+                    return { then: () => proxy };
+                }
+                const r = requestResponseMessage(ep, {
+                    type: 0 /* GET */,
+                    path: path.map((p) => p.toString()),
+                }).then(fromWireValue);
+                return r.then.bind(r);
+            }
+            return createProxy(ep, [...path, prop]);
+        },
+        set(_target, prop, rawValue) {
+            throwIfProxyReleased(isProxyReleased);
+            // FIXME: ES6 Proxy Handler `set` methods are supposed to return a
+            // boolean. To show good will, we return true asynchronously ¯\_(ツ)_/¯
+            const [value, transferables] = toWireValue(rawValue);
+            return requestResponseMessage(ep, {
+                type: 1 /* SET */,
+                path: [...path, prop].map((p) => p.toString()),
+                value,
+            }, transferables).then(fromWireValue);
+        },
+        apply(_target, _thisArg, rawArgumentList) {
+            throwIfProxyReleased(isProxyReleased);
+            const last = path[path.length - 1];
+            if (last === createEndpoint) {
+                return requestResponseMessage(ep, {
+                    type: 4 /* ENDPOINT */,
+                }).then(fromWireValue);
+            }
+            // We just pretend that `bind()` didn’t happen.
+            if (last === "bind") {
+                return createProxy(ep, path.slice(0, -1));
+            }
+            const [argumentList, transferables] = processArguments(rawArgumentList);
+            return requestResponseMessage(ep, {
+                type: 2 /* APPLY */,
+                path: path.map((p) => p.toString()),
+                argumentList,
+            }, transferables).then(fromWireValue);
+        },
+        construct(_target, rawArgumentList) {
+            throwIfProxyReleased(isProxyReleased);
+            const [argumentList, transferables] = processArguments(rawArgumentList);
+            return requestResponseMessage(ep, {
+                type: 3 /* CONSTRUCT */,
+                path: path.map((p) => p.toString()),
+                argumentList,
+            }, transferables).then(fromWireValue);
+        },
+    });
+    return proxy;
+}
+function myFlat(arr) {
+    return Array.prototype.concat.apply([], arr);
+}
+function processArguments(argumentList) {
+    const processed = argumentList.map(toWireValue);
+    return [processed.map((v) => v[0]), myFlat(processed.map((v) => v[1]))];
+}
+const transferCache = new WeakMap();
+function transfer(obj, transfers) {
+    transferCache.set(obj, transfers);
+    return obj;
+}
+function proxy(obj) {
+    return Object.assign(obj, { [proxyMarker]: true });
+}
+function windowEndpoint(w, context = self, targetOrigin = "*") {
+    return {
+        postMessage: (msg, transferables) => w.postMessage(msg, targetOrigin, transferables),
+        addEventListener: context.addEventListener.bind(context),
+        removeEventListener: context.removeEventListener.bind(context),
+    };
+}
+function toWireValue(value) {
+    for (const [name, handler] of transferHandlers) {
+        if (handler.canHandle(value)) {
+            const [serializedValue, transferables] = handler.serialize(value);
+            return [
+                {
+                    type: 3 /* HANDLER */,
+                    name,
+                    value: serializedValue,
+                },
+                transferables,
+            ];
+        }
+    }
+    return [
+        {
+            type: 0 /* RAW */,
+            value,
+        },
+        transferCache.get(value) || [],
+    ];
+}
+function fromWireValue(value) {
+    switch (value.type) {
+        case 3 /* HANDLER */:
+            return transferHandlers.get(value.name).deserialize(value.value);
+        case 0 /* RAW */:
+            return value.value;
+    }
+}
+function requestResponseMessage(ep, msg, transfers) {
+    return new Promise((resolve) => {
+        const id = generateUUID();
+        ep.addEventListener("message", function l(ev) {
+            if (!ev.data || !ev.data.id || ev.data.id !== id) {
+                return;
+            }
+            ep.removeEventListener("message", l);
+            resolve(ev.data);
+        });
+        if (ep.start) {
+            ep.start();
+        }
+        ep.postMessage(Object.assign({ id }, msg), transfers);
+    });
+}
+function generateUUID() {
+    return new Array(4)
+        .fill(0)
+        .map(() => Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString(16))
+        .join("-");
+}
+
+
+//# sourceMappingURL=comlink.mjs.map
+
+
+/***/ }),
+
+/***/ 162:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+/// <reference lib="dom" />
+/// <reference lib="dom.iterable" />
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createDbWorker = void 0;
+// TODO: using comlink for all this is a pretty ugly hack
+const Comlink = __importStar(__webpack_require__(870));
+Comlink.transferHandlers.set("WORKERSQLPROXIES", {
+    canHandle: (obj) => false,
+    serialize(obj) {
+        throw Error("no");
+    },
+    deserialize: (port) => {
+        port.start();
+        return Comlink.wrap(port);
+    },
+});
+async function createDbWorker(configs, workerUrl, wasmUrl, maxBytesToRead = Infinity) {
+    const worker = new Worker(workerUrl);
+    const sqlite = Comlink.wrap(worker);
+    const db = (await sqlite.SplitFileHttpDatabase(wasmUrl, configs, undefined, maxBytesToRead));
+    const release = () => {
+        db[Comlink.releaseProxy]();
+        sqlite[Comlink.releaseProxy]();
+        worker.terminate();
+    };
+    worker.addEventListener("message", handleAsyncRequestFromWorkerThread);
+    return { db, worker: sqlite, configs, release };
+}
+exports.createDbWorker = createDbWorker;
+async function handleAsyncRequestFromWorkerThread(ev) {
+    if (ev.data && ev.data.action === "eval") {
+        const metaArray = new Int32Array(ev.data.notify, 0, 2);
+        const dataArray = new Uint8Array(ev.data.notify, 2 * 4);
+        let response;
+        try {
+            response = { ok: await handleDomVtableRequest(ev.data.request) };
+        }
+        catch (e) {
+            console.error("worker request error", ev.data.request, e);
+            response = { err: String(e) };
+        }
+        const text = new TextEncoder().encode(JSON.stringify(response));
+        dataArray.set(text, 0); // need to copy here because:
+        // sadly TextEncoder.encodeInto: Argument 2 can't be a SharedArrayBuffer or an ArrayBufferView backed by a SharedArrayBuffer [AllowShared]
+        // otherwise this would be better:
+        /*const encodeRes = new TextEncoder().encodeInto(response, data);
+        if (encodeRes.read !== response.length) {
+          console.log(encodeRes, response.length)
+          throw Error(`not enough space for response: ${response.length} > ${data.byteLength}`);
+        }*/
+        metaArray[1] = text.length;
+        Atomics.notify(metaArray, 0);
+    }
+}
+function getUniqueSelector(elm) {
+    if (elm.tagName === "BODY")
+        return "body";
+    const names = [];
+    while (elm.parentElement && elm.tagName !== "BODY") {
+        if (elm.id) {
+            // assume id is unique (which it isn't)
+            names.unshift("#" + elm.id);
+            break;
+        }
+        else {
+            let c = 1;
+            let e = elm;
+            while (e.previousElementSibling) {
+                e = e.previousElementSibling;
+                c++;
+            }
+            names.unshift(elm.tagName.toLowerCase() + ":nth-child(" + c + ")");
+        }
+        elm = elm.parentElement;
+    }
+    return names.join(" > ");
+}
+function keys(o) {
+    return Object.keys(o);
+}
+async function handleDomVtableRequest(req) {
+    console.log("dom vtable request", req);
+    if (req.type === "select") {
+        return [...document.querySelectorAll(req.selector)].map((e) => {
+            const out = {};
+            for (const column of req.columns) {
+                if (column === "selector") {
+                    out.selector = getUniqueSelector(e);
+                }
+                else if (column === "parent") {
+                    if (e.parentElement) {
+                        out.parent = e.parentElement
+                            ? getUniqueSelector(e.parentElement)
+                            : null;
+                    }
+                }
+                else if (column === "idx") {
+                    // ignore
+                }
+                else {
+                    out[column] = e[column];
+                }
+            }
+            return out;
+        });
+    }
+    else if (req.type === "insert") {
+        if (!req.value.parent)
+            throw Error(`"parent" column must be set when inserting`);
+        const target = document.querySelectorAll(req.value.parent);
+        if (target.length === 0)
+            throw Error(`Parent element ${req.value.parent} could not be found`);
+        if (target.length > 1)
+            throw Error(`Parent element ${req.value.parent} ambiguous (${target.length} results)`);
+        const parent = target[0];
+        if (!req.value.tagName)
+            throw Error(`tagName must be set for inserting`);
+        const ele = document.createElement(req.value.tagName);
+        const cantSet = ["idx"];
+        for (const i of keys(req.value)) {
+            if (req.value[i] !== null) {
+                if (i === "tagName" || i === "parent")
+                    continue;
+                if (i === "idx" || i === "selector")
+                    throw Error(`${i} can't be set`);
+                ele[i] = req.value[i];
+            }
+        }
+        parent.appendChild(ele);
+        return null;
+    }
+    else if (req.type === "update") {
+        const targetElement = document.querySelector(req.value.selector);
+        if (!targetElement)
+            throw Error(`Element ${req.value.selector} not found!`);
+        const toSet = [];
+        for (const k of keys(req.value)) {
+            const v = req.value[k];
+            if (k === "parent") {
+                if (v !== getUniqueSelector(targetElement.parentElement)) {
+                    const targetParent = document.querySelectorAll(v);
+                    if (targetParent.length !== 1)
+                        throw Error(`Invalid target parent: found ${targetParent.length} matches`);
+                    targetParent[0].appendChild(targetElement);
+                }
+                continue;
+            }
+            if (k === "idx" || k === "selector")
+                continue;
+            if (v !== targetElement[k]) {
+                console.log("SETTING ", k, targetElement[k], "->", v);
+                if (k === "tagName")
+                    throw Error("can't change tagName");
+                toSet.push(k); // defer setting to prevent setting multiple interdependent values (e.g. textContent and innerHTML)
+            }
+        }
+        for (const k of toSet) {
+            targetElement[k] = req.value[k];
+        }
+        return null;
+    }
+    else {
+        throw Error(`unknown request ${req.type}`);
+    }
+}
+
+
+/***/ }),
+
+/***/ 432:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+__exportStar(__webpack_require__(162), exports);
+
+
+/***/ })
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	(() => {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__webpack_require__.d = (exports, definition) => {
+/******/ 			for(var key in definition) {
+/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	(() => {
+/******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/************************************************************************/
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __webpack_require__(432);
+/******/ 	
+/******/ 	return __webpack_exports__;
+/******/ })()
+;
+});
 //# sourceMappingURL=index.js.map

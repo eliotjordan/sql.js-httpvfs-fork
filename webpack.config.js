@@ -8,7 +8,9 @@ const ts = {
 };
 module.exports = {
   entry: { index: "./src", "sqlite.worker": "./src/sqlite.worker" },
-  // mode:,
+  optimization: {
+    minimize: false
+  },
   devtool: "source-map",
   module: {
     noParse: /sql-wasm\.js/,
