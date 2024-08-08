@@ -9,6 +9,5 @@
 "ALLOC_NORMAL",
 "allocateUTF8OnStack",
 "removeFunction",
-"addFunction",
-"FS"
+"addFunction"
 ]

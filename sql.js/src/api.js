@@ -1399,9 +1399,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
     // export Database to Module
     Module.Database = Database;
-    Module["FS"] = FS;
-    Module.FS = FS;
     Module["CustomDatabase"] = CustomDatabase;
-    Module.CustomDatabase = CustomDatabase;
+    Module["FS"] = FS;
     CustomDatabase.prototype = Object.create(Database.prototype);
 };
