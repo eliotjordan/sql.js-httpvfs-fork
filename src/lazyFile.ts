@@ -279,7 +279,7 @@ export class LazyUint8Array {
 }
 /** create the actual file object for the emscripten file system */
 export function createLazyFile(
-  FS: any,
+  lib: any,
   parent: string,
   name: string,
   canRead: boolean,
@@ -289,7 +289,7 @@ export function createLazyFile(
   var lazyArray = new LazyUint8Array(lazyFileConfig);
   var properties = { isDevice: false, contents: lazyArray };
 
-  var node = FS.createLazyFile(parent, name, properties, canRead, canWrite);
+  var node = lib.FS_createLazyFile(parent, name, properties, canRead, canWrite);
   node.contents = lazyArray;
   // Add a function that defers querying the file size until it is asked the first time.
   Object.defineProperties(node, {
@@ -305,7 +305,7 @@ export function createLazyFile(
   keys.forEach(function (key) {
     var fn = node.stream_ops[key];
     stream_ops[key] = function forceLoadLazyFile() {
-      FS.forceLoadFile(node);
+      // FS.forceLoadFile(node);
       return fn.apply(null, arguments);
     };
   });
@@ -317,7 +317,7 @@ export function createLazyFile(
     length: number,
     position: number
   ) {
-    FS.forceLoadFile(node);
+    // FS.forceLoadFile(node);
 
     const contents = stream.node.contents;
 

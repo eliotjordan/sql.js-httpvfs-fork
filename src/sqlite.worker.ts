@@ -193,7 +193,7 @@ const mod = {
       console.log("constructing url database", id, "filename", filename);
       console.log("sql log")
       console.log(sql)
-      const lazyFile = createLazyFile(sql.FS, "/", filename, true, true, {
+      const lazyFile = createLazyFile(sql, "/", filename, true, true, {
         rangeMapper,
         requestChunkSize: config.requestChunkSize,
         fileLength:

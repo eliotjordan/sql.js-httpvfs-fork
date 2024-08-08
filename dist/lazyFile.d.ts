@@ -57,4 +57,4 @@ export declare class LazyUint8Array {
     private doXHR;
 }
 /** create the actual file object for the emscripten file system */
-export declare function createLazyFile(FS: any, parent: string, name: string, canRead: boolean, canWrite: boolean, lazyFileConfig: LazyFileConfig): any;
+export declare function createLazyFile(lib: any, parent: string, name: string, canRead: boolean, canWrite: boolean, lazyFileConfig: LazyFileConfig): any;
