@@ -291,8 +291,10 @@ export function createLazyFile(
 
   var node = new FS(parent, name, properties, canRead, canWrite);
   node.contents = lazyArray;
+
   console.log("Log node")
   console.log(node)
+  node.forceLoadFile();
   // Add a function that defers querying the file size until it is asked the first time.
   Object.defineProperties(node, {
     usedBytes: {
