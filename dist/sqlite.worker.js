@@ -540,6 +540,8 @@ function createLazyFile(FS, parent, name, canRead, canWrite, lazyFileConfig) {
     var properties = { isDevice: false, contents: lazyArray };
     var node = new FS(parent, name, properties, canRead, canWrite);
     node.contents = lazyArray;
+    console.log("Log node");
+    console.log(node);
     // Add a function that defers querying the file size until it is asked the first time.
     Object.defineProperties(node, {
         usedBytes: {
