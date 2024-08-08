@@ -733,7 +733,7 @@ const mod = {
             console.log("constructing url database", id, "filename", filename);
             console.log("sql log");
             console.log(sql);
-            const lazyFile = lazyFile_1.createLazyFile(sql.FS, "/", filename, true, true, {
+            const lazyFile = lazyFile_1.createLazyFile(sql.FSNode, "/", filename, true, true, {
                 rangeMapper,
                 requestChunkSize: config.requestChunkSize,
                 fileLength: config.serverMode === "chunked"
@@ -1249,7 +1249,7 @@ e._sqlite3_result_int=(a,b)=>(e._sqlite3_result_int=Z.da)(a,b);e._sqlite3_result
 e._sqlite3_column_blob=(a,b)=>(e._sqlite3_column_blob=Z.ka)(a,b);e._sqlite3_column_bytes=(a,b)=>(e._sqlite3_column_bytes=Z.la)(a,b);e._sqlite3_column_double=(a,b)=>(e._sqlite3_column_double=Z.ma)(a,b);e._sqlite3_bind_blob=(a,b,c,d,f)=>(e._sqlite3_bind_blob=Z.na)(a,b,c,d,f);e._sqlite3_bind_double=(a,b,c)=>(e._sqlite3_bind_double=Z.oa)(a,b,c);e._sqlite3_bind_int=(a,b,c)=>(e._sqlite3_bind_int=Z.pa)(a,b,c);e._sqlite3_bind_text=(a,b,c,d,f)=>(e._sqlite3_bind_text=Z.qa)(a,b,c,d,f);
 e._sqlite3_bind_parameter_index=(a,b)=>(e._sqlite3_bind_parameter_index=Z.ra)(a,b);e._sqlite3_sql=a=>(e._sqlite3_sql=Z.sa)(a);e._sqlite3_normalized_sql=a=>(e._sqlite3_normalized_sql=Z.ta)(a);e._sqlite3_changes=a=>(e._sqlite3_changes=Z.ua)(a);e._sqlite3_close_v2=a=>(e._sqlite3_close_v2=Z.va)(a);e._sqlite3_create_function_v2=(a,b,c,d,f,k,l,m,u)=>(e._sqlite3_create_function_v2=Z.wa)(a,b,c,d,f,k,l,m,u);e._sqlite3_open=(a,b)=>(e._sqlite3_open=Z.xa)(a,b);
 var la=e._malloc=a=>(la=e._malloc=Z.ya)(a),ja=e._free=a=>(ja=e._free=Z.za)(a);e._RegisterExtensionFunctions=a=>(e._RegisterExtensionFunctions=Z.Aa)(a);var yb=(a,b)=>(yb=Z.Ba)(a,b),ra=a=>(ra=Z.Ca)(a),ma=a=>(ma=Z.Da)(a),oa=()=>(oa=Z.Ea)();e.addRunDependency=Sa;e.removeRunDependency=Va;e.stackSave=()=>oa();e.stackRestore=a=>ra(a);e.stackAlloc=a=>ma(a);e.cwrap=(a,b,c,d)=>{var f=!c||c.every(k=>"number"===k||"boolean"===k);return"string"!==b&&f&&!d?e["_"+a]:(...k)=>yc(a,b,c,k)};e.addFunction=ua;
-e.removeFunction=ta;e.UTF8ToString=qa;e.FS_createPreloadedFile=Eb;e.FS_unlink=a=>x.unlink(a);e.FS_createPath=Cc;e.FS_createDevice=Ec;e.FS_createDataFile=(a,b,c,d,f,k)=>{x.kb(a,b,c,d,f,k)};e.FS_createLazyFile=Dc;e.ALLOC_NORMAL=fa;e.allocate=ea;e.allocateUTF8OnStack=sa;var Gc;Ra=function Hc(){Gc||Ic();Gc||(Ra=Hc)};
+e.removeFunction=ta;e.UTF8ToString=qa;e.FS_createPreloadedFile=Eb;e.FS_unlink=a=>x.unlink(a);e.FS_createPath=Cc;e.FS_createDevice=Ec;e.FS=x;e.FS_createDataFile=(a,b,c,d,f,k)=>{x.kb(a,b,c,d,f,k)};e.FS_createLazyFile=Dc;e.ALLOC_NORMAL=fa;e.allocate=ea;e.allocateUTF8OnStack=sa;var Gc;Ra=function Hc(){Gc||Ic();Gc||(Ra=Hc)};
 function Ic(){function a(){if(!Gc&&(Gc=!0,e.calledRun=!0,!Ga)){e.noFSInit||x.ib.ub||x.ib();x.Ob=!1;db(Ma);e.onRuntimeInitialized?.();if(e.postRun)for("function"==typeof e.postRun&&(e.postRun=[e.postRun]);e.postRun.length;){var b=e.postRun.shift();Na.unshift(b)}db(Na)}}if(!(0<Pa)){if(e.preRun)for("function"==typeof e.preRun&&(e.preRun=[e.preRun]);e.preRun.length;)Oa();db(La);0<Pa||(e.setStatus?(e.setStatus("Running..."),setTimeout(function(){setTimeout(function(){e.setStatus("")},1);a()},1)):a())}}
 if(e.preInit)for("function"==typeof e.preInit&&(e.preInit=[e.preInit]);0<e.preInit.length;)e.preInit.pop()();Ic();
 
