@@ -1,5 +1,6 @@
 /* global
     FS
+    FSNode
     HEAP8
     Module
     _malloc
@@ -1401,5 +1402,6 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     Module.Database = Database;
     Module["CustomDatabase"] = CustomDatabase;
     Module["FS"] = FS;
+    Module["FSNode"] = FS.FSNode;
     CustomDatabase.prototype = Object.create(Database.prototype);
 };
