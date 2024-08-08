@@ -289,7 +289,7 @@ export function createLazyFile(
   var lazyArray = new LazyUint8Array(lazyFileConfig);
   var properties = { isDevice: false, contents: lazyArray };
 
-  var node = FS.createFile(parent, name, properties, canRead, canWrite);
+  var node = FS.new(parent, name, properties, canRead, canWrite);
   node.contents = lazyArray;
   // Add a function that defers querying the file size until it is asked the first time.
   Object.defineProperties(node, {
@@ -305,7 +305,8 @@ export function createLazyFile(
   keys.forEach(function (key) {
     var fn = node.stream_ops[key];
     stream_ops[key] = function forceLoadLazyFile() {
-      FS.forceLoadFile(node);
+      // FS.forceLoadFile(node);
+      node.forceLoadFile();
       return fn.apply(null, arguments);
     };
   });
@@ -317,7 +318,7 @@ export function createLazyFile(
     length: number,
     position: number
   ) {
-    FS.forceLoadFile(node);
+    node.forceLoadFile();
 
     const contents = stream.node.contents;
 

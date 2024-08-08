@@ -10,5 +10,6 @@
 "allocateUTF8OnStack",
 "removeFunction",
 "addFunction",
-"FS"
+"FS",
+"FSNode"
 ]
