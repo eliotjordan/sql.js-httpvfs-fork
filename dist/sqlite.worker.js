@@ -538,7 +538,7 @@ exports.LazyUint8Array = LazyUint8Array;
 function createLazyFile(FS, parent, name, canRead, canWrite, lazyFileConfig) {
     var lazyArray = new LazyUint8Array(lazyFileConfig);
     var properties = { isDevice: false, contents: lazyArray };
-    var node = FS.new(parent, name, properties, canRead, canWrite);
+    var node = new FS(parent, name, properties, canRead, canWrite);
     node.contents = lazyArray;
     // Add a function that defers querying the file size until it is asked the first time.
     Object.defineProperties(node, {
