@@ -1,4 +1,4 @@
-# Note: Last built with version 1.38.30 of Emscripten
+# Note: Last built with version 2.0.15 of Emscripten
 
 # TODO: Emit a file showing which version of emcc and SQLite was used to compile the emitted output.
 # TODO: Create a release on Github with these compiled assets rather than checking them in
@@ -6,9 +6,9 @@
 
 # I got this handy makefile syntax from : https://github.com/mandel59/sqlite-wasm (MIT License) Credited in LICENSE
 # To use another version of Sqlite, visit https://www.sqlite.org/download.html and copy the appropriate values here:
-SQLITE_AMALGAMATION = sqlite-amalgamation-3350000
-SQLITE_AMALGAMATION_ZIP_URL = https://www.sqlite.org/2021/sqlite-amalgamation-3350000.zip
-SQLITE_AMALGAMATION_ZIP_SHA1 = ba64bad885c9f51df765a9624700747e7bf21b79
+SQLITE_AMALGAMATION = sqlite-amalgamation-3450200
+SQLITE_AMALGAMATION_ZIP_URL = https://www.sqlite.org/2024/sqlite-amalgamation-3450200.zip
+SQLITE_AMALGAMATION_ZIP_SHA3 = 8d9c553b52c7b1656a97fec7907cb00fd1419ac45104e45c76b7c2b81ffe0a9d
 
 # Note that extension-functions.c hasn't been updated since 2010-02-06, so likely doesn't need to be updated
 EXTENSION_FUNCTIONS = extension-functions.c
@@ -17,14 +17,14 @@ EXTENSION_FUNCTIONS_SHA1 = c68fa706d6d9ff98608044c00212473f9c14892f
 
 EMCC=emcc
 
-CFLAGS = \
-	-O2 \
+SQLITE_COMPILATION_FLAGS = \
+	-Oz \
 	-DSQLITE_OMIT_LOAD_EXTENSION \
 	-DSQLITE_DISABLE_LFS \
 	-DSQLITE_ENABLE_FTS3 \
-	-DSQLITE_ENABLE_FTS3_PARENTHESIS \
 	-DSQLITE_ENABLE_FTS5 \
-	-DSQLITE_ENABLE_JSON1 \
+	-DSQLITE_ENABLE_RTREE \
+	-DSQLITE_ENABLE_FTS3_PARENTHESIS \
 	-DSQLITE_THREADSAFE=0 \
 	-DSQLITE_ENABLE_NORMALIZE
 
@@ -32,18 +32,15 @@ CFLAGS = \
 # Since tihs is a library and not a standalone executable, we don't want to catch unhandled Node process exceptions
 # So, we do : `NODEJS_CATCH_EXIT=0`, which fixes issue: https://github.com/sql-js/sql.js/issues/173 and https://github.com/sql-js/sql.js/issues/262
 EMFLAGS = \
-	--memory-init-file 0 \
 	-s RESERVED_FUNCTION_POINTERS=64 \
 	-s ALLOW_TABLE_GROWTH=1 \
 	-s EXPORTED_FUNCTIONS=@src/exported_functions.json \
-	-s EXTRA_EXPORTED_RUNTIME_METHODS=@src/exported_runtime_methods.json \
+	-s EXPORTED_RUNTIME_METHODS=@src/exported_runtime_methods.json \
 	-s SINGLE_FILE=0 \
 	-s NODEJS_CATCH_EXIT=0 \
 	-s NODEJS_CATCH_REJECTION=0 \
-	-s LEGACY_RUNTIME=1
+	-s STACK_SIZE=5MB
 
-#	-s ASYNCIFY=1 \
-#	-s ASYNCIFY_IMPORTS='["sqlite3VdbeExec"]'
 EMFLAGS_ASM = \
 	-s WASM=0
 
@@ -56,17 +53,15 @@ EMFLAGS_WASM = \
 	-s ALLOW_MEMORY_GROWTH=1
 
 EMFLAGS_OPTIMIZED= \
-	-s INLINING_LIMIT=1 \
-	-O3 \
-	-flto
+	-Oz \
+	-flto \
+	--closure 1
 
 EMFLAGS_DEBUG = \
-	-s INLINING_LIMIT=1 \
-	-s ASSERTIONS=1 \
-	-s SAFE_HEAP=1 \
-	-O0
+	-s ASSERTIONS=2 \
+	-O1
 
-BITCODE_FILES = out/sqlite3.bc out/extension-functions.bc
+BITCODE_FILES = out/sqlite3.o out/extension-functions.o
 
 OUTPUT_WRAPPER_FILES = src/shell-pre.js src/shell-post.js
 
@@ -149,16 +144,16 @@ dist/worker.sql-wasm-debug.js: dist/sql-wasm-debug.js src/worker.js
 # 	#mv out/sql-wasm-debug.wasm dist/sql-wasm-debug.wasm
 # 	rm out/tmp-raw.js
 
-out/sqlite3.bc: sqlite-src/$(SQLITE_AMALGAMATION)
+out/sqlite3.o: sqlite-src/$(SQLITE_AMALGAMATION)
 	mkdir -p out
 	# Generate llvm bitcode
-	$(EMCC) $(CFLAGS) -c sqlite-src/$(SQLITE_AMALGAMATION)/sqlite3.c -o $@
+	$(EMCC) $(SQLITE_COMPILATION_FLAGS) -c sqlite-src/$(SQLITE_AMALGAMATION)/sqlite3.c -o $@
 
 # Since the extension-functions.c includes other headers in the sqlite_amalgamation, we declare that this depends on more than just extension-functions.c
-out/extension-functions.bc: sqlite-src/$(SQLITE_AMALGAMATION)
+out/extension-functions.o: sqlite-src/$(SQLITE_AMALGAMATION)
 	mkdir -p out
 	# Generate llvm bitcode
-	$(EMCC) $(CFLAGS) -s LINKABLE=1 -c sqlite-src/$(SQLITE_AMALGAMATION)/extension-functions.c -o $@
+	$(EMCC) $(SQLITE_COMPILATION_FLAGS) -c sqlite-src/$(SQLITE_AMALGAMATION)/extension-functions.c -o $@
 
 # TODO: This target appears to be unused. If we re-instatate it, we'll need to add more files inside of the JS folder
 # module.tar.gz: test package.json AUTHORS README.md dist/sql-asm.js
@@ -179,8 +174,8 @@ sqlite-src: sqlite-src/$(SQLITE_AMALGAMATION) sqlite-src/$(SQLITE_AMALGAMATION)/
 
 sqlite-src/$(SQLITE_AMALGAMATION): cache/$(SQLITE_AMALGAMATION).zip sqlite-src/$(SQLITE_AMALGAMATION)/$(EXTENSION_FUNCTIONS)
 	mkdir -p sqlite-src/$(SQLITE_AMALGAMATION)
-	echo '$(SQLITE_AMALGAMATION_ZIP_SHA1)  ./cache/$(SQLITE_AMALGAMATION).zip' > cache/check.txt
-	sha1sum -c cache/check.txt
+	echo '$(SQLITE_AMALGAMATION_ZIP_SHA3)  ./cache/$(SQLITE_AMALGAMATION).zip' > cache/check.txt
+	sha3sum -a 256 -c cache/check.txt
 	# We don't delete the sqlite_amalgamation folder. That's a job for clean
 	# Also, the extension functions get copied here, and if we get the order of these steps wrong,
 	# this step could remove the extension functions, and that's not what we want

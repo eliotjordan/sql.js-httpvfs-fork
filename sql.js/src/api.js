@@ -1,16 +1,11 @@
 /* global
-    ALLOC_NORMAL
     FS
     HEAP8
     Module
     _malloc
     _free
-    addFunction
-    allocate
-    allocateUTF8OnStack
     getValue
     intArrayFromString
-    removeFunction
     setValue
     stackAlloc
     stackRestore
@@ -18,6 +13,11 @@
     UTF8ToString
     stringToUTF8
     lengthBytesUTF8
+    allocate
+    ALLOC_NORMAL
+    allocateUTF8OnStack
+    removeFunction
+    addFunction
 */
 
 "use strict";
@@ -117,6 +117,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         "number",
         ["number", "number", "number"]
     );
+
     var sqlite3_bind_parameter_index = cwrap(
         "sqlite3_bind_parameter_index",
         "number",
@@ -167,13 +168,6 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         ["number"]
     );
     var sqlite3_finalize = cwrap("sqlite3_finalize", "number", ["number"]);
-    var sqlite3_create_module_v2 = cwrap(
-        "sqlite3_create_module_v2",
-        "number",
-        [
-            "number", "string", "number", "number", "number"
-        ]
-    )
     var sqlite3_create_function_v2 = cwrap(
         "sqlite3_create_function_v2",
         "number",
@@ -232,12 +226,14 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         "",
         ["number", "string", "number"]
     );
-    var sqlite3_malloc = cwrap(
-        "sqlite3_malloc",
+
+    // https://www.sqlite.org/c3ref/aggregate_context.html
+    // void *sqlite3_aggregate_context(sqlite3_context*, int nBytes)
+    var sqlite3_aggregate_context = cwrap(
+        "sqlite3_aggregate_context",
         "number",
-        ["number"]
+        ["number", "number"]
     );
-    Module["sqlite3_malloc"] = sqlite3_malloc;
     var registerExtensionFunctions = cwrap(
         "RegisterExtensionFunctions",
         "number",
@@ -284,7 +280,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
     /** @typedef {string|number|null|Uint8Array} Database.SqlValue */
     /** @typedef {
-        Database.SqlValue[]|Object<string, Database.SqlValue>|null
+        Array<Database.SqlValue>|Object<string, Database.SqlValue>|null
     } Statement.BindParams
      */
 
@@ -337,7 +333,6 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         }
         return true;
     };
-    Statement.prototype["bind_"] = Statement.prototype.bind; // work around https://github.com/GoogleChromeLabs/comlink/blob/4ba8162f6c28fb1bf53b491565ef9a3ae42b72d3/src/comlink.ts#L432
 
     /** Execute the statement, fetching the the next line of result,
     that can be retrieved with {@link Statement.get}.
@@ -373,6 +368,19 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         return sqlite3_column_double(this.stmt, pos);
     };
 
+    Statement.prototype.getBigInt = function getBigInt(pos) {
+        if (pos == null) {
+            pos = this.pos;
+            this.pos += 1;
+        }
+        var text = sqlite3_column_text(this.stmt, pos);
+        if (typeof BigInt !== "function") {
+            throw new Error("BigInt is not supported");
+        }
+        /* global BigInt */
+        return BigInt(text);
+    };
+
     Statement.prototype.getString = function getString(pos) {
         if (pos == null) {
             pos = this.pos;
@@ -399,14 +407,19 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     If the first parameter is not provided, step must have been called before.
     @param {Statement.BindParams} [params] If set, the values will be bound
     to the statement before it is executed
-    @return {Database.SqlValue[]} One row of result
+    @return {Array<Database.SqlValue>} One row of result
 
     @example
     <caption>Print all the rows of the table test to the console</caption>
     var stmt = db.prepare("SELECT * FROM test");
     while (stmt.step()) console.log(stmt.get());
+
+    <caption>Enable BigInt support</caption>
+    var stmt = db.prepare("SELECT * FROM test");
+    while (stmt.step()) console.log(stmt.get(null, {useBigInt: true}));
      */
-    Statement.prototype["get"] = function get(params) {
+    Statement.prototype["get"] = function get(params, config) {
+        config = config || {};
         if (params != null && this["bind"](params)) {
             this["step"]();
         }
@@ -415,6 +428,11 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         for (var field = 0; field < ref; field += 1) {
             switch (sqlite3_column_type(this.stmt, field)) {
                 case SQLITE_INTEGER:
+                    var getfunc = config["useBigInt"]
+                        ? this.getBigInt(field)
+                        : this.getNumber(field);
+                    results1.push(getfunc);
+                    break;
                 case SQLITE_FLOAT:
                     results1.push(this.getNumber(field));
                     break;
@@ -432,7 +450,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     };
 
     /** Get the list of column names of a row of result of a statement.
-    @return {string[]} The names of the columns
+    @return {Array<string>} The names of the columns
     @example
     var stmt = db.prepare(
         "SELECT 5 AS nbr, x'616200' AS data, NULL AS null_value;"
@@ -466,8 +484,8 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         console.log(stmt.getAsObject());
         // Will print {nbr:5, data: Uint8Array([1,2,3]), null_value:null}
      */
-    Statement.prototype["getAsObject"] = function getAsObject(params) {
-        var values = this["get"](params);
+    Statement.prototype["getAsObject"] = function getAsObject(params, config) {
+        var values = this["get"](params, config);
         var names = this["getColumnNames"]();
         var rowObject = {};
         for (var i = 0; i < names.length; i += 1) {
@@ -575,10 +593,15 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             pos = this.pos;
             this.pos += 1;
         }
+
         switch (typeof val) {
             case "string":
                 return this.bindString(val, pos);
             case "number":
+                return this.bindNumber(val + 0, pos);
+            case "bigint":
+                // BigInt is not fully supported yet at WASM level.
+                return this.bindString(val.toString(), pos);
             case "boolean":
                 return this.bindNumber(val + 0, pos);
             case "object":
@@ -616,7 +639,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     };
 
     /** Bind values to numbered parameters
-    @param {Database.SqlValue[]} values
+    @param {Array<Database.SqlValue>} values
     @private
     @nodoc
      */
@@ -627,12 +650,12 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         return true;
     };
 
-    /** Reset a statement, so that it's parameters can be bound to new values
+    /** Reset a statement, so that its parameters can be bound to new values
     It also clears all previous bindings, freeing the memory used
     by bound parameters.
      */
     Statement.prototype["reset"] = function reset() {
-        this.freemem();
+        this["freemem"]();
         return (
             sqlite3_clear_bindings(this.stmt) === SQLITE_OK
             && sqlite3_reset(this.stmt) === SQLITE_OK
@@ -652,7 +675,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
      */
     Statement.prototype["free"] = function free() {
         var res;
-        this.freemem();
+        this["freemem"]();
         res = sqlite3_finalize(this.stmt) === SQLITE_OK;
         delete this.db.statements[this.stmt];
         this.stmt = NULL;
@@ -797,7 +820,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     * @memberof module:SqlJs
     * Open a new database either by creating a new one or opening an existing
     * one stored in the byte array passed in first argument
-    * @param {number[]} data An array of bytes representing
+    * @param {Array<number>} data An array of bytes representing
     * an SQLite database file
     */
     function Database(data) {
@@ -828,7 +851,6 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         // (created by create_function call)
         this.functions = {};
     }
-
     /** Execute an SQL query, ignoring the rows it returns.
     @param {string} sql a string containing some SQL text to execute
     @param {Statement.BindParams} [params] When the SQL statement contains
@@ -864,12 +886,14 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
     /**
      * @typedef {{
-        columns:string[],
-        values:Database.SqlValue[][]
+        columns:Array<string>,
+        values:Array<Array<Database.SqlValue>>
     }} Database.QueryExecResult
-     * @property {string[]} columns the name of the columns of the result
+     * @property {Array<string>} columns the name of the columns of the result
      * (as returned by {@link Statement.getColumnNames})
-     * @property {Database.SqlValue[][]} values one array per row, containing
+     * @property {
+     *  Array<Array<Database.SqlValue>>
+     * } values one array per row, containing
      * the column values
      */
 
@@ -926,9 +950,9 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     before it is executed. If you use the params argument as an array,
     you **cannot** provide an sql string that contains several statements
     (separated by `;`). This limitation does not apply to params as an object.
-    * @return {Database.QueryExecResult[]} The results of each statement
+    * @return {Array<Database.QueryExecResult>} The results of each statement
     */
-    Database.prototype["exec"] = function exec(sql, params) {
+    Database.prototype["exec"] = function exec(sql, params, config) {
         if (!this.db) {
             throw "Database closed";
         }
@@ -966,7 +990,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
                             };
                             results.push(curresult);
                         }
-                        curresult["values"].push(stmt["get"]());
+                        curresult["values"].push(stmt["get"](null, config));
                     }
                     stmt["free"]();
                 }
@@ -987,7 +1011,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
     @param {string} sql A string of SQL text. Can contain placeholders
     that will be bound to the parameters given as the second argument
-    @param {Statement.BindParams} [params=[]] Parameters to bind to the query
+    @param {Statement.BindParams=} [params=] Parameters to bind to the query
     @param {function(Object<string, Database.SqlValue>):void} callback
     Function to call on each row of result
     @param {function():void} done A function that will be called when
@@ -1000,7 +1024,8 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             function (row){console.log(row.name + " is a grown-up.")}
     );
      */
-    Database.prototype["each"] = function each(sql, params, callback, done) {
+    // eslint-disable-next-line max-len
+    Database.prototype["each"] = function each(sql, params, callback, done, config) {
         var stmt;
         if (typeof params === "function") {
             done = callback;
@@ -1010,7 +1035,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         stmt = this["prepare"](sql, params);
         try {
             while (stmt["step"]()) {
-                callback(stmt["getAsObject"]());
+                callback(stmt["getAsObject"](null, config));
             }
         } finally {
             stmt["free"]();
@@ -1064,7 +1089,9 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         return new StatementIterator(sql, this);
     };
 
-    /** Exports the contents of the database to a binary array
+    /** Exports the contents of the database to a binary array. This
+     * operation will close and re-open the database which will cause
+     * any pragmas to be set back to their default values.
     @return {Uint8Array} An array of bytes of the SQLite3 database file
      */
     Database.prototype["export"] = function exportDatabase() {
@@ -1077,6 +1104,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         var binaryDb = FS.readFile(this.filename, { encoding: "binary" });
         this.handleError(sqlite3_open(this.filename, apiTemp));
         this.db = getValue(apiTemp, "i32");
+        registerExtensionFunctions(this.db);
         return binaryDb;
     };
 
@@ -1107,7 +1135,6 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
     /** Analyze a result code, return null if no error occured, and throw
     an error with a descriptive message otherwise
-    @param {int} returnCode 
     @nodoc
      */
     Database.prototype["handleError"] = function handleError(returnCode) {
@@ -1116,7 +1143,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             return null;
         }
         errmsg = sqlite3_errmsg(this.db);
-        throw new Error("SQLite: " + (errmsg || "Code " + returnCode));
+        throw new Error(errmsg);
     };
 
     /** Returns the number of changed rows (modified, inserted or deleted)
@@ -1130,34 +1157,92 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         return sqlite3_changes(this.db);
     };
 
-    /** Register a custom function with SQLite
-    @example Register a simple function
-        db.create_function("addOne", function (x) {return x+1;})
-        db.exec("SELECT addOne(1)") // = 2
+    var extract_blob = function extract_blob(ptr) {
+        var size = sqlite3_value_bytes(ptr);
+        var blob_ptr = sqlite3_value_blob(ptr);
+        var blob_arg = new Uint8Array(size);
+        for (var j = 0; j < size; j += 1) {
+            blob_arg[j] = HEAP8[blob_ptr + j];
+        }
+        return blob_arg;
+    };
 
-    @param {string} name the name of the function as referenced in
-    SQL statements.
-    @param {function} func the actual function to be executed.
-    @return {Database} The database object. Useful for method chaining
-     */
+    var parseFunctionArguments = function parseFunctionArguments(argc, argv) {
+        var args = [];
+        for (var i = 0; i < argc; i += 1) {
+            var value_ptr = getValue(argv + (4 * i), "i32");
+            var value_type = sqlite3_value_type(value_ptr);
+            var arg;
+            if (
+                value_type === SQLITE_INTEGER
+                || value_type === SQLITE_FLOAT
+            ) {
+                arg = sqlite3_value_double(value_ptr);
+            } else if (value_type === SQLITE_TEXT) {
+                arg = sqlite3_value_text(value_ptr);
+            } else if (value_type === SQLITE_BLOB) {
+                arg = extract_blob(value_ptr);
+            } else arg = null;
+            args.push(arg);
+        }
+        return args;
+    };
+    var setFunctionResult = function setFunctionResult(cx, result) {
+        switch (typeof result) {
+            case "boolean":
+                sqlite3_result_int(cx, result ? 1 : 0);
+                break;
+            case "number":
+                sqlite3_result_double(cx, result);
+                break;
+            case "string":
+                sqlite3_result_text(cx, result, -1, -1);
+                break;
+            case "object":
+                if (result === null) {
+                    sqlite3_result_null(cx);
+                } else if (result.length != null) {
+                    var blobptr = allocate(result, ALLOC_NORMAL);
+                    sqlite3_result_blob(cx, blobptr, result.length, -1);
+                    _free(blobptr);
+                } else {
+                    sqlite3_result_error(
+                        cx, (
+                            "Wrong API use : tried to return a value "
+                        + "of an unknown type (" + result + ")."
+                        ), -1
+                    );
+                }
+                break;
+            default:
+                sqlite3_result_null(cx);
+        }
+    };
+
+    /** Register a custom function with SQLite
+      @example <caption>Register a simple function</caption>
+          db.create_function("addOne", function (x) {return x+1;})
+          db.exec("SELECT addOne(1)") // = 2
+
+      @param {string} name the name of the function as referenced in
+      SQL statements.
+      @param {function(any)} func the actual function to be executed.
+      @return {Database} The database object. Useful for method chaining
+       */
     Database.prototype["create_function"] = function create_function(
         name,
         func
     ) {
         function wrapped_func(cx, argc, argv) {
+            var args = parseFunctionArguments(argc, argv);
             var result;
-            var args = [];
-            for (var i = 0; i < argc; i += 1) {
-                args.push(Module.extract_value(argv + 4 * i));
-            }
             try {
                 result = func.apply(null, args);
             } catch (error) {
-                sqlite3_result_error(cx, "JS threw: " + error, -1);
+                sqlite3_result_error(cx, error, -1);
                 return;
             }
-            Module.set_return_value(cx, result);
-            
+            setFunctionResult(cx, result);
         }
         if (Object.prototype.hasOwnProperty.call(this.functions, name)) {
             removeFunction(this.functions[name]);
@@ -1181,111 +1266,140 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         return this;
     };
 
-    function extract_blob(ptr) {
-        var size = sqlite3_value_bytes(ptr);
-        var blob_ptr = sqlite3_value_blob(ptr);
-        var blob_arg = new Uint8Array(size);
-        for (var j = 0; j < size; j += 1) {
-            blob_arg[j] = HEAP8[blob_ptr + j];
-        }
-        return blob_arg;
-    }
-    Module["extract_value"] = function extract_value(ptr) {
-        var value_ptr = getValue(ptr, "i32");
-        var value_type = sqlite3_value_type(value_ptr);
-        var arg;
-        if (
-            value_type === SQLITE_INTEGER
-            || value_type === SQLITE_FLOAT
-        ) {
-            arg = sqlite3_value_double(value_ptr);
-        } else if (value_type === SQLITE_TEXT) {
-            arg = sqlite3_value_text(value_ptr);
-        } else if (value_type === SQLITE_BLOB) {
-            arg = extract_blob(value_ptr);
-        } else arg = null;
-        return arg;
-    }
-    Module["set_return_value"] = function set_return_value(cx, result) {
-        switch (typeof result) {
-            case "boolean":
-                sqlite3_result_int(cx, result ? 1 : 0);
-                break;
-            case "number":
-                sqlite3_result_double(cx, result);
-                break;
-            case "string":
-                sqlite3_result_text(cx, result, -1, -1);
-                break;
-            case "object":
-                if (result === null) {
-                    sqlite3_result_null(cx);
-                } else if (result.length != null) {
-                    var blobptr = allocate(result, ALLOC_NORMAL);
-                    sqlite3_result_blob(cx, blobptr, result.length, -1);
-                    _free(blobptr);
-                } else {
-                    sqlite3_result_error(cx, (
-                        "Wrong API use : tried to return a value "
-                        + "of an unknown type (" + result + ")."
-                    ), -1);
-                }
-                break;
-            default:
-                console.warn("unknown sqlite result type: ", typeof result, result);
-                sqlite3_result_null(cx);
-        }
-    }
+    /** Register a custom aggregate with SQLite
+      @example <caption>Register a custom sum function</caption>
+        db.create_aggregate("js_sum", {
+            init: () => 0,
+            step: (state, value) => state + value,
+            finalize: state => state
+        });
+        db.exec("SELECT js_sum(column1) FROM (VALUES (1), (2))"); // = 3
 
-    Database.prototype.create_vtab = function create_vtab(cons) {
-        const ele = new cons(Module, this);
-        const module_things = {
-            iVersion: null,
-            xCreate: "ptr",
-            xConnect: "ptr",
-            xBestIndex: "ptr",
-            xDisconnect: "ptr",
-            xDestroy: "ptr",
-            xOpen: "ptr",
-            xClose: "ptr",
-            xFilter: "ptr",
-            xNext: "ptr",
-            xEof: "ptr",
-            xColumn: "ptr",
-            xRowid: "ptr",
-            xUpdate: "ptr",
-            xBegin: "ptr",
-            xSync: "ptr",
-            xCommit: "ptr",
-            xRollback: "ptr",
-            xFindFunction: "ptr",
-            xRename: "ptr",
-            xSavepoint: "ptr",
-            xRelease: "ptr",
-            xRollbackTo: "ptr",
-            xShadowName: "ptr",
-          }
-          
-        const sqlite3_module = _malloc(Object.keys(module_things).length * 4); // 24 ints / pointers
-        let i = 0;
-        for (const k in module_things) {
-            let tgt = ele[k] || 0;
-            let type = "i32";
-            if(module_things[k] && ele[k]) {
-                const fn = ele[k].bind(ele);
-                var sig = Array(1 + fn.length).fill("i").join(""); // every arg passed as an int
-                tgt = addFunction(fn, sig);
-                type = "*";
-            }
-            setValue(sqlite3_module + i * 4, tgt, type);
-            i++;
+      @param {string} name the name of the aggregate as referenced in
+      SQL statements.
+      @param {object} aggregateFunctions
+                      object containing at least a step function.
+      @param {function(): T} [aggregateFunctions.init=]
+            a function receiving no arguments and returning an initial
+            value for the aggregate function. The initial value will be
+            null if this key is omitted.
+      @param {function(T, any) : T} aggregateFunctions.step
+            a function receiving the current state and a value to aggregate
+            and returning a new state.
+            Will receive the value from init for the first step.
+      @param {function(T): any} [aggregateFunctions.finalize=]
+            a function returning the result of the aggregate function
+            given its final state.
+            If omitted, the value returned by the last step
+            will be used as the final value.
+      @return {Database} The database object. Useful for method chaining
+      @template T
+       */
+    Database.prototype["create_aggregate"] = function create_aggregate(
+        name,
+        aggregateFunctions
+    ) {
+        // Default initializer and finalizer
+        var init = aggregateFunctions["init"]
+            || function init() { return null; };
+        var finalize = aggregateFunctions["finalize"]
+            || function finalize(state) { return state; };
+        var step = aggregateFunctions["step"];
+
+        if (!step) {
+            throw "An aggregate function must have a step function in " + name;
         }
-        this.handleError(sqlite3_create_module_v2(this.db, ele.name, sqlite3_module, 0, 0));
-    }
+
+        // state is a state object; we'll use the pointer p to serve as the
+        // key for where we hold our state so that multiple invocations of
+        // this function never step on each other
+        var state = {};
+
+        function wrapped_step(cx, argc, argv) {
+            // > The first time the sqlite3_aggregate_context(C,N) routine is
+            // > called for a particular aggregate function, SQLite allocates N
+            // > bytes of memory, zeroes out that memory, and returns a pointer
+            // > to the new memory.
+            //
+            // We're going to use that pointer as a key to our state array,
+            // since using sqlite3_aggregate_context as it's meant to be used
+            // through webassembly seems to be very difficult. Just allocate
+            // one byte.
+            var p = sqlite3_aggregate_context(cx, 1);
+
+            // If this is the first invocation of wrapped_step, call `init`
+            //
+            // Make sure that every path through the step and finalize
+            // functions deletes the value state[p] when it's done so we don't
+            // leak memory and possibly stomp the init value of future calls
+            if (!Object.hasOwnProperty.call(state, p)) state[p] = init();
+
+            var args = parseFunctionArguments(argc, argv);
+            var mergedArgs = [state[p]].concat(args);
+            try {
+                state[p] = step.apply(null, mergedArgs);
+            } catch (error) {
+                delete state[p];
+                sqlite3_result_error(cx, error, -1);
+            }
+        }
+
+        function wrapped_finalize(cx) {
+            var result;
+            var p = sqlite3_aggregate_context(cx, 1);
+            try {
+                result = finalize(state[p]);
+            } catch (error) {
+                delete state[p];
+                sqlite3_result_error(cx, error, -1);
+                return;
+            }
+            setFunctionResult(cx, result);
+            delete state[p];
+        }
+
+        if (Object.hasOwnProperty.call(this.functions, name)) {
+            removeFunction(this.functions[name]);
+            delete this.functions[name];
+        }
+        var finalize_name = name + "__finalize";
+        if (Object.hasOwnProperty.call(this.functions, finalize_name)) {
+            removeFunction(this.functions[finalize_name]);
+            delete this.functions[finalize_name];
+        }
+        // The signature of the wrapped function is :
+        // void wrapped(sqlite3_context *db, int argc, sqlite3_value **argv)
+        var step_ptr = addFunction(wrapped_step, "viii");
+
+        // The signature of the wrapped function is :
+        // void wrapped(sqlite3_context *db)
+        var finalize_ptr = addFunction(wrapped_finalize, "vi");
+        this.functions[name] = step_ptr;
+        this.functions[finalize_name] = finalize_ptr;
+
+        // passing null to the sixth parameter defines this as an aggregate
+        // function
+        //
+        // > An aggregate SQL function requires an implementation of xStep and
+        // > xFinal and NULL pointer must be passed for xFunc.
+        // - http://www.sqlite.org/c3ref/create_function.html
+        this.handleError(sqlite3_create_function_v2(
+            this.db,
+            name,
+            step.length - 1,
+            SQLITE_UTF8,
+            0,
+            0,
+            step_ptr,
+            finalize_ptr,
+            0
+        ));
+        return this;
+    };
 
     // export Database to Module
     Module.Database = Database;
-    Module["CustomDatabase"] = CustomDatabase;
     Module["FS"] = FS;
+    Module["CustomDatabase"] = CustomDatabase;
     CustomDatabase.prototype = Object.create(Database.prototype);
 };

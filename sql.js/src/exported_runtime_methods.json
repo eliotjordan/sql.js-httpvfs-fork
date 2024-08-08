@@ -4,10 +4,10 @@
 "stackSave",
 "stackRestore",
 "UTF8ToString",
-"stringToUTF8",
-"lengthBytesUTF8",
-"ccall",
-"setValue",
-"getValue",
+
+"allocate",
+"ALLOC_NORMAL",
+"allocateUTF8OnStack",
+"removeFunction",
 "addFunction"
 ]
