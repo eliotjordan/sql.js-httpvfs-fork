@@ -1,10 +1,10 @@
 import { createDbWorker } from "sql.js-httpvfs";
 
 const workerUrl = new URL(
-  "sql.js-httpvfs/dist/sqlite.worker.js",
+  "../../dist/sqlite.worker.js",
   import.meta.url
 );
-const wasmUrl = new URL("sql.js-httpvfs/dist/sql-wasm.wasm", import.meta.url);
+const wasmUrl = new URL("../../dist/sql-wasm.wasm", import.meta.url);
 
 async function load() {
   const worker = await createDbWorker(
@@ -13,7 +13,8 @@ async function load() {
         from: "inline",
         config: {
           serverMode: "full",
-          url: "/example.sqlite3",
+          // url: "/example.sqlite3",
+          url: "https://phiresky.github.io/world-development-indicators-sqlite/split-db/config.json",
           requestChunkSize: 4096,
         },
       },
@@ -22,7 +23,7 @@ async function load() {
     wasmUrl.toString()
   );
 
-  const result = await worker.db.query(`select * from mytable`);
+  const result = await worker.db.query("select * from wdi_country");
 
   document.body.textContent = JSON.stringify(result);
 }

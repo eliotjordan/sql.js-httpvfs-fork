@@ -168,6 +168,13 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         ["number"]
     );
     var sqlite3_finalize = cwrap("sqlite3_finalize", "number", ["number"]);
+    var sqlite3_create_module_v2 = cwrap(
+        "sqlite3_create_module_v2",
+        "number",
+        [
+            "number", "string", "number", "number", "number"
+        ]
+    )
     var sqlite3_create_function_v2 = cwrap(
         "sqlite3_create_function_v2",
         "number",
@@ -234,6 +241,14 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         "number",
         ["number", "number"]
     );
+
+    var sqlite3_malloc = cwrap(
+        "sqlite3_malloc",
+        "number",
+        ["number"]
+    );
+    Module["sqlite3_malloc"] = sqlite3_malloc;
+
     var registerExtensionFunctions = cwrap(
         "RegisterExtensionFunctions",
         "number",
@@ -1143,7 +1158,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             return null;
         }
         errmsg = sqlite3_errmsg(this.db);
-        throw new Error(errmsg);
+        throw new Error("SQLite: " + (errmsg || "Code " + returnCode));
     };
 
     /** Returns the number of changed rows (modified, inserted or deleted)
@@ -1166,6 +1181,85 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         }
         return blob_arg;
     };
+
+    Module["extract_value"] = function extract_value(ptr) {
+        var value_ptr = getValue(ptr, "i32");
+        var value_type = sqlite3_value_type(value_ptr);
+        var arg;
+        if (
+            value_type === SQLITE_INTEGER
+            || value_type === SQLITE_FLOAT
+        ) {
+            arg = sqlite3_value_double(value_ptr);
+        } else if (value_type === SQLITE_TEXT) {
+            arg = sqlite3_value_text(value_ptr);
+        } else if (value_type === SQLITE_BLOB) {
+            arg = extract_blob(value_ptr);
+        } else arg = null;
+        return arg;
+    }
+
+    Module["set_return_value"] = function set_return_value(cx, result) {
+        switch (typeof result) {
+            case "boolean":
+                sqlite3_result_int(cx, result ? 1 : 0);
+                break;
+            case "number":
+                sqlite3_result_double(cx, result);
+                break;
+            case "string":
+                sqlite3_result_text(cx, result, -1, -1);
+                break;
+            case "object":
+                if (result === null) {
+                    sqlite3_result_null(cx);
+                } else if (result.length != null) {
+                    var blobptr = allocate(result, ALLOC_NORMAL);
+                    sqlite3_result_blob(cx, blobptr, result.length, -1);
+                    _free(blobptr);
+                } else {
+                    sqlite3_result_error(cx, (
+                        "Wrong API use : tried to return a value "
+                        + "of an unknown type (" + result + ")."
+                    ), -1);
+                }
+                break;
+            default:
+                console.warn("unknown sqlite result type: ", typeof result, result);
+                sqlite3_result_null(cx);
+        }
+    }
+
+    Module["set_return_value"] = function set_return_value(cx, result) {
+        switch (typeof result) {
+            case "boolean":
+                sqlite3_result_int(cx, result ? 1 : 0);
+                break;
+            case "number":
+                sqlite3_result_double(cx, result);
+                break;
+            case "string":
+                sqlite3_result_text(cx, result, -1, -1);
+                break;
+            case "object":
+                if (result === null) {
+                    sqlite3_result_null(cx);
+                } else if (result.length != null) {
+                    var blobptr = allocate(result, ALLOC_NORMAL);
+                    sqlite3_result_blob(cx, blobptr, result.length, -1);
+                    _free(blobptr);
+                } else {
+                    sqlite3_result_error(cx, (
+                        "Wrong API use : tried to return a value "
+                        + "of an unknown type (" + result + ")."
+                    ), -1);
+                }
+                break;
+            default:
+                console.warn("unknown sqlite result type: ", typeof result, result);
+                sqlite3_result_null(cx);
+        }
+    }
 
     var parseFunctionArguments = function parseFunctionArguments(argc, argv) {
         var args = [];
@@ -1234,15 +1328,18 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         func
     ) {
         function wrapped_func(cx, argc, argv) {
-            var args = parseFunctionArguments(argc, argv);
             var result;
+            var args = [];
+            for (var i = 0; i < argc; i += 1) {
+                args.push(Module.extract_value(argv + 4 * i));
+            }
             try {
                 result = func.apply(null, args);
             } catch (error) {
-                sqlite3_result_error(cx, error, -1);
+                sqlite3_result_error(cx, "JS threw: " + error, -1);
                 return;
             }
-            setFunctionResult(cx, result);
+            Module.set_return_value(cx, result);
         }
         if (Object.prototype.hasOwnProperty.call(this.functions, name)) {
             removeFunction(this.functions[name]);
@@ -1397,9 +1494,59 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         return this;
     };
 
+    Database.prototype["create_vtab"] = function create_vtab(cons) {
+        const ele = new cons(Module, this);
+        const module_things = {
+            iVersion: null,
+            xCreate: "ptr",
+            xConnect: "ptr",
+            xBestIndex: "ptr",
+            xDisconnect: "ptr",
+            xDestroy: "ptr",
+            xOpen: "ptr",
+            xClose: "ptr",
+            xFilter: "ptr",
+            xNext: "ptr",
+            xEof: "ptr",
+            xColumn: "ptr",
+            xRowid: "ptr",
+            xUpdate: "ptr",
+            xBegin: "ptr",
+            xSync: "ptr",
+            xCommit: "ptr",
+            xRollback: "ptr",
+            xFindFunction: "ptr",
+            xRename: "ptr",
+            xSavepoint: "ptr",
+            xRelease: "ptr",
+            xRollbackTo: "ptr",
+            xShadowName: "ptr",
+          }
+        const sqlite3_module = _malloc(Object.keys(module_things).length * 4); // 24 ints / pointers
+        let i = 0;
+        for (const k in module_things) {
+            let tgt = ele[k] || 0;
+            let type = "i32";
+            if(module_things[k] && ele[k]) {
+                const fn = ele[k].bind(ele);
+                var sig = Array(1 + fn.length).fill("i").join(""); // every arg passed as an int
+                tgt = addFunction(fn, sig);
+                type = "*";
+            }
+            setValue(sqlite3_module + i * 4, tgt, type);
+            i++;
+        }
+        this.handleError(sqlite3_create_module_v2(this.db, ele.name, sqlite3_module, 0, 0));
+    }
+
     // export Database to Module
     Module.Database = Database;
-    Module["FS"] = FS;
-    Module["CustomDatabase"] = CustomDatabase;
+
     CustomDatabase.prototype = Object.create(Database.prototype);
+    Module["FS"] = FS;
+    Module["FS_createFile"] = FS.createFile;
+    Module["FS_createDataFile"] = FS.createDataFile;
+    Module["FS_createNode"] = FS.createNode;
+    Module["FS_forceLoadFile"] = FS.forceLoadFile;
+    Module["CustomDatabase"] = CustomDatabase;
 };

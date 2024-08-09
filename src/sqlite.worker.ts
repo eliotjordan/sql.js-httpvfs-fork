@@ -191,7 +191,9 @@ const mod = {
       }
       console.log("filename", filename);
       console.log("constructing url database", id, "filename", filename);
-      const lazyFile = createLazyFile(sql.FS, "/", filename, true, true, {
+      console.log("log sql")
+      console.log(sql)
+      const lazyFile = createLazyFile(sql, "/", filename, true, true, {
         rangeMapper,
         requestChunkSize: config.requestChunkSize,
         fileLength:
@@ -218,6 +220,7 @@ const mod = {
 
     this.db.lazyFiles = lazyFiles;
     this.db.create_vtab(SeriesVtab);
+    debugger
     this.db.query = (...args) => toObjects(this.db!.exec(...args));
     return this.db!;
   },
